@@ -162,24 +162,25 @@ def preguntar_temperatura(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("temp_"))
 def respuesta_temperatura(call):
     usuario_id = call.from_user.id
+    if call.data == "temp_menor_36":
+            #temp_data[usuario_id]['temperatura'] = call.data.replace("temp_", "").replace("_", " ")
+            temp_data[usuario_id]['temperatura'] = 36
+            preguntar_vomitos(call.message)
 
     if call.data == "temp_36_37":
         # Mostrar opciones específicas entre 36.1 y 36.9
         markup = InlineKeyboardMarkup()
-        buttons = [InlineKeyboardButton(f"36.{i}", callback_data=f"temp_36.{i}") for i in range(1, 10)]
+        buttons = [InlineKeyboardButton(f"36.{i}", callback_data=f"temp36.{i}") for i in range(1, 10)]
         markup.add(*buttons)
         bot.edit_message_text("Elija una temperatura más específica:", call.message.chat.id, call.message.message_id, reply_markup=markup)
-        
-    if call.data == "temp_menor_36":
-        #temp_data[usuario_id]['temperatura'] = call.data.replace("temp_", "").replace("_", " ")
-        temp_data[usuario_id]['temperatura'] = 36
-        preguntar_vomitos(call.message)
+        print(call.data)
+
+
 #Temperatura entre 36.1 y 36.9
-@bot.callback_query_handler(func=lambda call: call.data.startswith("temp_36."))
+@bot.callback_query_handler(func=lambda call: call.data.startswith("temp36."))
 def respuesta_temperatura_especifica(call):
     usuario_id = call.from_user.id
-    temp_data[usuario_id]['temperatura'] = call.data.replace("temp_", "")
-    print (call.data)
+    temp_data[usuario_id]['temperatura'] = call.data.replace("temp", "")
     preguntar_vomitos(call.message)
 
 #Preguntar Vomitos
