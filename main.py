@@ -1,5 +1,6 @@
-import telebot 
+import telebot
 import sqlite3
+import re
 from datetime import datetime
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 #from config import * #importar config
@@ -25,7 +26,7 @@ def cmd_start(message):
 #Registrar Pacientes desde Admin, comando /registrar
 @bot.message_handler(commands=["registrar"])
 def cmd_registrar(message):
-    global usuario_id 
+    global usuario_id
     usuario_id = message.from_user.id
     temp_data[usuario_id] = {}
     bot.reply_to(message, "Ingresa el folio del paciente: ")
@@ -118,9 +119,9 @@ def guardar_en_db(usuario_id):
     cursor.execute('''
         INSERT INTO pacientes (folio, nombre, apellido_paterno, apellido_materno, edad, lugar_procedencia, numero)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (paciente['folio'], paciente['nombre'], paciente['apellido_paterno'], paciente['apellido_materno'], 
-          paciente['edad'], paciente['lugar_procedencia'], paciente['numero']))
-    
+    ''', (paciente['folio'], paciente['nombre'], paciente['apellido_paterno'], paciente['apellido_materno'],
+        paciente['edad'], paciente['lugar_procedencia'], paciente['numero']))
+
     conn.commit()
     conn.close() # Cerramos la conexión
 
@@ -131,7 +132,7 @@ def guardar_en_db(usuario_id):
 #Obtener folio de paciente y avisar si se encuentra registrado
 def validar_folio(message):
     folio = message.text
-    global usuario_id 
+    global usuario_id
     #
     usuario_id = message.from_user.id
     paciente = verificar_paciente(folio)
@@ -143,7 +144,9 @@ def validar_folio(message):
         preguntar_temperatura(message)
     else:
         bot.send_message(message.chat.id, "Paciente no encontrado. Por favor verifique el folio.")
-#####Inicia Seguimiento#####
+
+
+################## INICIA SEGUIMIENTO ##################
 
 # Pregunta sobre la temperatura del paciente
 def preguntar_temperatura(message):
@@ -153,6 +156,7 @@ def preguntar_temperatura(message):
         InlineKeyboardButton("36 a 37", callback_data="temp_36_37"),
         InlineKeyboardButton("37 a 38", callback_data="temp_37_38"),
         InlineKeyboardButton("38 a 39", callback_data="temp_38_39"),
+        InlineKeyboardButton("39 a 40", callback_data="temp_39_40"),
         InlineKeyboardButton("Mayor a 40", callback_data="temp_mayor_40")
     ]
     markup.add(*buttons)
@@ -167,6 +171,11 @@ def respuesta_temperatura(call):
             temp_data[usuario_id]['temperatura'] = 36
             preguntar_vomitos(call.message)
 
+    if call.data == "temp_mayor_40":
+            #temp_data[usuario_id]['temperatura'] = call.data.replace("temp_", "").replace("_", " ")
+            temp_data[usuario_id]['temperatura'] = 40
+            preguntar_vomitos(call.message)
+
     if call.data == "temp_36_37":
         # Mostrar opciones específicas entre 36.1 y 36.9
         markup = InlineKeyboardMarkup()
@@ -175,9 +184,33 @@ def respuesta_temperatura(call):
         bot.edit_message_text("Elija una temperatura más específica:", call.message.chat.id, call.message.message_id, reply_markup=markup)
         print(call.data)
 
+    if call.data == "temp_37_38":
+        # Mostrar opciones específicas entre 36.1 y 36.9
+        markup = InlineKeyboardMarkup()
+        buttons = [InlineKeyboardButton(f"37.{i}", callback_data=f"temp37.{i}") for i in range(1, 10)]
+        markup.add(*buttons)
+        bot.edit_message_text("Elija una temperatura más específica:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        print(call.data)
 
-#Temperatura entre 36.1 y 36.9
-@bot.callback_query_handler(func=lambda call: call.data.startswith("temp36."))
+    if call.data == "temp_38_39":
+        # Mostrar opciones específicas entre 36.1 y 36.9
+        markup = InlineKeyboardMarkup()
+        buttons = [InlineKeyboardButton(f"38.{i}", callback_data=f"temp38.{i}") for i in range(1, 10)]
+        markup.add(*buttons)
+        bot.edit_message_text("Elija una temperatura más específica:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        print(call.data)
+
+    if call.data == "temp_39_40":
+        # Mostrar opciones específicas entre 36.1 y 36.9
+        markup = InlineKeyboardMarkup()
+        buttons = [InlineKeyboardButton(f"39.{i}", callback_data=f"temp39.{i}") for i in range(1, 10)]
+        markup.add(*buttons)
+        bot.edit_message_text("Elija una temperatura más específica:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        print(call.data)
+
+
+#Guardar Temperatura
+@bot.callback_query_handler(func = lambda call: re.match(r'^temp(3[6-9]\.)', call.data) is not None)
 def respuesta_temperatura_especifica(call):
     usuario_id = call.from_user.id
     temp_data[usuario_id]['temperatura'] = call.data.replace("temp", "")
@@ -196,14 +229,14 @@ def respuesta_vomitos(call):
     usuario_id = call.from_user.id
 
     print(f"Datos de temp_data en respuesta_vomito: {temp_data}")
-    
+
     if call.data == "vomitos_si":
         temp_data[usuario_id]['vomitos'] = "Si"
         markup = InlineKeyboardMarkup()
         buttons = [
-            InlineKeyboardButton("1 vez por semana", callback_data="frec_1"),
-            InlineKeyboardButton("2 veces por semana", callback_data="frec_2"),
-            InlineKeyboardButton("3 o más veces por semana", callback_data="frec_3")
+        InlineKeyboardButton("1 vez por semana", callback_data="frec_1"),
+        InlineKeyboardButton("2 veces por semana", callback_data="frec_2"),
+        InlineKeyboardButton("3 o más veces por semana", callback_data="frec_3")
         ]
         markup.add(*buttons)
         bot.edit_message_text("¿Con qué frecuencia?", call.message.chat.id, call.message.message_id, reply_markup=markup)
@@ -216,7 +249,7 @@ def respuesta_vomitos(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("frec_"))
 def respuesta_frecuencia_vomitos(call):
     usuario_id = call.from_user.id
-    
+
     print(f"Datos de temp_data en respuesta_temperatura: {temp_data}")
 
     temp_data[usuario_id]['frecuencia_vomitos'] = call.data.replace("frec_", "")
@@ -305,7 +338,7 @@ def guardar_seguimiento(message):
     if usuario_id not in temp_data:
         bot.send_message(message.chat.id, "Ocurrió un error. No se encontraron los datos de seguimiento.")
         return
-    
+
     seguimiento = temp_data[usuario_id]
     folio = seguimiento['folio']
     fecha = datetime.now().strftime('%Y-%m-%d')
@@ -322,38 +355,38 @@ def guardar_seguimiento(message):
         bot.send_message(message.chat.id, "Error: Falta la temperatura del paciente.")
         print("Error: Falta la temperatura")
         return
-    
+
     if not vomitos:
         bot.send_message(message.chat.id, "Error: Falta la vomitos del paciente.")
         print("Error: Falta la vomitos")
         return
-    
+
     if not frecuencia_vomitos:
         bot.send_message(message.chat.id, "Error: Falta la frecuencia vomitos del paciente.")
         print("Error: Falta la frecuencia vomitos")
         return
-    
+
     if not problemas_respiracion:
         bot.send_message(message.chat.id, "Error:  problemas respiracion del paciente.")
         print("Error: Faltan problemas respiracion")
         return
-    
+
     if not dolor_corporal:
         bot.send_message(message.chat.id, "Error: Falta la dolor_corporal del paciente.")
         print("Error: Falta la dolor_corporal")
         return
-    
+
     if not zona_dolor:
         bot.send_message(message.chat.id, "Error: zona_dolor del paciente.")
         print("Error: zona_dolor")
         return
-    
+
     if not intensidad_dolor:
         bot.send_message(message.chat.id, "Error: Falta la intensidad_dolor del paciente.")
         print("Error: Falta la intensidad_dolor")
         return
-    
-    
+
+
     # Insertar los datos en la tabla seguimientos
     conn = sqlite3.connect('pacientes.db')
     cursor = conn.cursor()
